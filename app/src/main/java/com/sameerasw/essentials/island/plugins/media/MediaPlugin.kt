@@ -55,6 +55,8 @@ class MediaPlugin : BaseIslandPlugin() {
         val artist: String,
         val artwork: Bitmap?,
         val accent: Int?,
+        /** False while [artwork] is the app icon standing in for a cover the player hasn't sent. */
+        val hasCover: Boolean = true,
     )
 
     private var source: MediaSessionSource? = null
@@ -122,6 +124,8 @@ class MediaPlugin : BaseIslandPlugin() {
             if (title.isBlank() && artist.isBlank()) return
             val key = "${playingController.packageName}_${title}_$artist"
             if (track?.key == key) {
+                // Players often send the title first and the cover in a later metadata update.
+                if (track?.hasCover == false) upgradeArtwork(key, playingController)
                 render()
                 return
             }
@@ -135,7 +139,7 @@ class MediaPlugin : BaseIslandPlugin() {
                     resolved to accentFrom(resolved)
                 }
                 if (active?.sessionToken != playingController.sessionToken) return@launch
-                track = Track(key, playingController.packageName, title, artist, art, accent)
+                track = Track(key, playingController.packageName, title, artist, art, accent, hasCover = hadArt)
                 lastTrack = track
                 render()
                 if (isNewTrack && settings.isIslandMediaPeekSongChangeEnabled()) {
@@ -329,10 +333,30 @@ class MediaPlugin : BaseIslandPlugin() {
             if (track?.key != key || active?.sessionToken != controller.sessionToken) return
             val art = withContext(Dispatchers.IO) { MediaSessionSource.artwork(context, controller.metadata) } ?: return@forEach
             if (track?.key != key || active?.sessionToken != controller.sessionToken) return
-            track = track?.copy(artwork = art, accent = accentFrom(art))
+            track = track?.copy(artwork = art, accent = accentFrom(art), hasCover = true)
             lastTrack = track
             render()
             return
+        }
+    }
+
+    private var upgrading: String? = null
+
+    /** Swaps the app-icon stand-in for the real cover once the player's metadata carries one. */
+    private fun upgradeArtwork(key: String, controller: MediaController) {
+        if (upgrading == key) return
+        val c = ctx ?: return
+        upgrading = key
+        c.scope.launch {
+            try {
+                val art = withContext(Dispatchers.IO) { MediaSessionSource.artwork(context, controller.metadata) } ?: return@launch
+                if (track?.key != key || active?.sessionToken != controller.sessionToken) return@launch
+                track = track?.copy(artwork = art, accent = accentFrom(art), hasCover = true)
+                lastTrack = track
+                render()
+            } finally {
+                if (upgrading == key) upgrading = null
+            }
         }
     }
 

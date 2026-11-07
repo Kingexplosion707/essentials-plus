@@ -156,19 +156,57 @@ class MediaSessionSource(
             null
         }
 
+        /**
+         * The cover for the track in [metadata], or null when the player hasn't sent one yet.
+         *
+         * Only sources tied to this exact track are used. The listener's "latest art" bitmap and
+         * temp_album_art.png belong to whatever played last (and only refresh while Ambient Music
+         * Glance is on), so falling back to them showed a stale cover for every song.
+         */
         fun artwork(context: Context, metadata: MediaMetadata?): Bitmap? {
-            metadata?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)?.let { return it }
-            metadata?.getBitmap(MediaMetadata.METADATA_KEY_ART)?.let { return it }
-            val title = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE)
-            val artist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST)
+            metadata ?: return null
+            metadata.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)?.let { return it }
+            metadata.getBitmap(MediaMetadata.METADATA_KEY_ART)?.let { return it }
+            metadata.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON)?.let { return it }
+            listOf(
+                MediaMetadata.METADATA_KEY_ALBUM_ART_URI,
+                MediaMetadata.METADATA_KEY_ART_URI,
+                MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI,
+            ).forEach { key ->
+                metadata.getString(key)?.takeIf { it.isNotBlank() }?.let { uri ->
+                    decodeUri(context, uri)?.let { return it }
+                }
+            }
+            val title = metadata.getString(MediaMetadata.METADATA_KEY_TITLE)
+            val artist = metadata.getString(MediaMetadata.METADATA_KEY_ARTIST)
             if (!title.isNullOrBlank()) {
+                // Same hash the listener uses, so these are this song's cover, not the last one.
                 val hash = abs("${title}_$artist".hashCode().toLong())
                 NotificationListener.getCachedBitmap(hash)?.let { return it }
                 decode(File(context.cacheDir, "art_$hash.png"))?.let { return it }
             }
-            NotificationListener.getLatestArtBitmap()?.let { return it }
-            return decode(File(context.cacheDir, "temp_album_art.png"))
+            return null
         }
+
+        /** Loads a content:// or file:// cover URI the player shared, scaled down for the island. */
+        private fun decodeUri(context: Context, uri: String): Bitmap? = try {
+            val parsed = android.net.Uri.parse(uri)
+            if (parsed.scheme != "content" && parsed.scheme != "file" && parsed.scheme != "android.resource") {
+                null
+            } else {
+                val resolver = context.contentResolver
+                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                resolver.openInputStream(parsed)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+                var sample = 1
+                while (bounds.outWidth / (sample * 2) >= MAX_ART_PX && bounds.outHeight / (sample * 2) >= MAX_ART_PX) sample *= 2
+                val opts = BitmapFactory.Options().apply { inSampleSize = sample }
+                resolver.openInputStream(parsed)?.use { BitmapFactory.decodeStream(it, null, opts) }
+            }
+        } catch (_: Exception) {
+            null
+        }
+
+        private const val MAX_ART_PX = 512
 
         private fun decode(file: File): Bitmap? = if (file.exists()) {
             try {
