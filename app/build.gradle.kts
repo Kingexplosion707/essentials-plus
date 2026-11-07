@@ -177,6 +177,8 @@ android {
         jniLibs {
             useLegacyPackaging = true
         }
+        // kuromoji-core and kuromoji-ipadic (from :core) ship the same META-INF docs.
+        resources.excludes += "/META-INF/{CONTRIBUTORS.md,LICENSE.md,NOTICE.md,README.md}"
     }
 }
 
