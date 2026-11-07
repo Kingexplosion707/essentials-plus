@@ -47,6 +47,17 @@ kotlin {
 }
 
 android {
+    /** A value from the git-ignored root `.env`, else the environment (CI). */
+    fun localEnv(name: String): String {
+        val dotEnv = rootProject.file(".env")
+        val fromFile = if (!dotEnv.isFile) null else dotEnv.useLines { lines ->
+            lines.map(String::trim)
+                .firstOrNull { it.startsWith("$name=") }
+                ?.substringAfter('=')?.trim()?.trim('"', '\'')
+        }
+        return fromFile ?: System.getenv(name).orEmpty()
+    }
+
     namespace = "com.sameerasw.essentials"
     compileSdk = 37
     compileSdkMinor = 1
@@ -112,6 +123,12 @@ android {
     }
 
     defaultConfig {
+        // Publishable (sl_pk_) key for the Spicy Lyrics source. Blank disables that source.
+        val clientKey = localEnv("SPICY_LYRICS_CLIENT_KEY")
+        require(clientKey.isBlank() || Regex("sl_pk_[A-Za-z0-9_-]+").matches(clientKey)) {
+            "SPICY_LYRICS_CLIENT_KEY must be a publishable sl_pk_ key"
+        }
+        buildConfigField("String", "SPICY_LYRICS_CLIENT_KEY", "\"$clientKey\"")
         applicationId = "com.sameerasw.essentials"
         minSdk = 26
         targetSdk = 37
@@ -164,6 +181,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":core"))
     compileOnly(project(":stub"))
     implementation(libs.aboutlibraries.core)
     implementation(libs.aboutlibraries.compose.m3)

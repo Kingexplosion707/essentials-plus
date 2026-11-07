@@ -20,6 +20,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "Essentials"
 include(":app")
+include(":core")
 include(":stub")
 include(":island-sdk")
 include(":island-sdk-compose")

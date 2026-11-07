@@ -47,3 +47,7 @@ sentry.properties
 .claude/
 
 .DS_Store
+# Local secrets: publishable Spicy Lyrics key and other .env values
+.env
+.env.*
+!.env.example
