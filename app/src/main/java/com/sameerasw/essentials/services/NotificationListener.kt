@@ -18,6 +18,7 @@ import com.sameerasw.essentials.utils.PriorityModeUtil
 import com.sameerasw.essentials.utils.DeviceUtils
 import com.sameerasw.essentials.utils.notification.NotificationRepostFilter
 import com.sameerasw.essentials.utils.chronometer.ChronometerRepository
+import com.sameerasw.essentials.utils.lyrics.SpicyLyricsBridge
 import com.sameerasw.essentials.utils.call.CallNotificationParser
 import com.sameerasw.essentials.utils.call.CallStateRepository
 import android.app.Notification
@@ -385,6 +386,8 @@ class NotificationListener : NotificationListenerService() {
             ChronometerRepository.clear()
             safeActiveNotifications()?.filter { it.packageName != packageName && ChronometerRepository.isCandidate(it) }
                 ?.forEach { ChronometerRepository.onPosted(applicationContext, it) }
+            SpicyLyricsBridge.clear()
+            safeActiveNotifications()?.filter { SpicyLyricsBridge.isCandidate(it) }?.forEach { SpicyLyricsBridge.onPosted(it) }
 
             // Initial discovery from active notifications
             safeActiveNotifications()?.forEach { sbn ->
@@ -1070,6 +1073,11 @@ class NotificationListener : NotificationListenerService() {
         if (!hasReadableExtras(sbn)) return
 
         LiveUpdateSnoozer.onPosted(this, sbn)
+        if (SpicyLyricsBridge.isCandidate(sbn)) {
+            // The live lyrics line: feeds the island's lyrics pill, never shown as a notification.
+            SpicyLyricsBridge.onPosted(sbn)
+            return
+        }
         val isRepost = NotificationRepostFilter.isUnchangedRepost(sbn)
         if (CallNotificationParser.isCall(sbn)) CallStateRepository.onCallNotificationPosted(applicationContext, sbn)
         if (ChronometerRepository.isCandidate(sbn)) ChronometerRepository.onPosted(applicationContext, sbn)
@@ -1499,6 +1507,7 @@ class NotificationListener : NotificationListenerService() {
         if (sbn.packageName == packageName) return
         CallStateRepository.onCallNotificationRemoved(sbn.key)
         ChronometerRepository.onRemoved(sbn.key)
+        SpicyLyricsBridge.onRemoved(sbn.key)
         scheduleProgressRefresh()
     }
 
@@ -1508,6 +1517,7 @@ class NotificationListener : NotificationListenerService() {
         HilightProgressTracker.onRemoved(sbn.key)
         CallStateRepository.onCallNotificationRemoved(sbn.key)
         ChronometerRepository.onRemoved(sbn.key)
+        SpicyLyricsBridge.onRemoved(sbn.key)
         unreadNotifications.remove(sbn.key)
         WatchNotificationSyncManager.onNotificationRemoved(applicationContext, sbn.key)
         lastCallVibrateTime.remove(sbn.key)

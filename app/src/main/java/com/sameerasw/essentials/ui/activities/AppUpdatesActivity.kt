@@ -9,6 +9,8 @@
 
 package com.sameerasw.essentials
 
+import com.sameerasw.essentials.ui.theme.glassPageBackground
+import com.sameerasw.essentials.ui.theme.glassPageContainerColor
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
@@ -233,8 +235,8 @@ class AppUpdatesActivity : AppCompatActivity() {
                             0,
                             0,
                         ),
-                    modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    modifier = Modifier.glassPageBackground().nestedScroll(scrollBehavior.nestedScrollConnection),
+                    containerColor = glassPageContainerColor,
                     topBar = {
                         ReusableTopAppBar(
                             title = stringResource(R.string.tab_app_updates_title),

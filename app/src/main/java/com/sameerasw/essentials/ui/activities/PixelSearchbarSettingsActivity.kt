@@ -9,6 +9,8 @@
 
 package com.sameerasw.essentials.ui.activities
 
+import com.sameerasw.essentials.ui.theme.glassPageBackground
+import com.sameerasw.essentials.ui.theme.glassPageContainerColor
 import com.sameerasw.essentials.ui.navigation.ProvideBottomBar
 import com.sameerasw.essentials.ui.navigation.BottomBarSpec
 import com.sameerasw.essentials.ui.navigation.AppRoutes
@@ -140,8 +142,9 @@ fun PixelSearchbarSettingsScreen(onBack: () -> Unit) {
 
     EssentialsTheme(pitchBlackTheme = isPitchBlackThemeEnabled) {
         Scaffold(
+            modifier = Modifier.glassPageBackground(),
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            containerColor = glassPageContainerColor,
         ) { _ ->
             val density = LocalDensity.current
             val statusBarHeightPx =

@@ -9,6 +9,8 @@
 
 package com.sameerasw.essentials.ui.activities
 
+import com.sameerasw.essentials.ui.theme.glassPageBackground
+import com.sameerasw.essentials.ui.theme.glassPageContainerColor
 import androidx.compose.ui.platform.LocalContext
 import com.sameerasw.essentials.ui.navigation.findFragmentActivity
 import com.sameerasw.essentials.ui.navigation.ProvideBottomBar
@@ -628,8 +630,9 @@ fun AutomationEditorScreen(
         }
 
         Scaffold(
+            modifier = Modifier.glassPageBackground(),
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            containerColor = glassPageContainerColor,
         ) { _ ->
             val density = LocalDensity.current
             val statusBarHeightPx =
@@ -645,7 +648,7 @@ fun AutomationEditorScreen(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surfaceContainer),
+                        .glassPageBackground(),
             ) {
                 val configuration = LocalConfiguration.current
                 val screenWidth = configuration.screenWidthDp.dp

@@ -623,7 +623,7 @@ private fun AutomationItemSummariesPreview() {
             Automation("12", Automation.Type.TRIGGER, trigger = Trigger.ChargerConnected, actions = actions),
         )
 
-    EssentialsTheme(dynamicColor = false) {
+    EssentialsTheme(dynamicColor = false, liquidGlass = false) {
         Column(
             modifier = Modifier.padding(8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),

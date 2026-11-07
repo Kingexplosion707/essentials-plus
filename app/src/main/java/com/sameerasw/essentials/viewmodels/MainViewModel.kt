@@ -283,6 +283,9 @@ class MainViewModel : ViewModel() {
     val islandTimeoutMs = mutableLongStateOf(4500L)
     val isIslandLineStageEnabled = mutableStateOf(false)
     val isIslandMediaPeekSongChange = mutableStateOf(true)
+    val isIslandMediaLyrics = mutableStateOf(true)
+    val isIslandMediaLyricsPeek = mutableStateOf(true)
+    val isLiquidGlassEnabled = mutableStateOf(true)
     val isIslandMediaKeepWhenPaused = mutableStateOf(true)
     val isIslandMediaShowPrevious = mutableStateOf(false)
     val isIslandMediaUseArtColor = mutableStateOf(true)
@@ -966,6 +969,15 @@ class MainViewModel : ViewModel() {
 
                     SettingsRepository.KEY_ISLAND_MEDIA_PEEK_SONG_CHANGE ->
                         isIslandMediaPeekSongChange.value = settingsRepository.isIslandMediaPeekSongChangeEnabled()
+
+                    SettingsRepository.KEY_ISLAND_MEDIA_LYRICS ->
+                        isIslandMediaLyrics.value = settingsRepository.isIslandMediaLyricsEnabled()
+
+                    SettingsRepository.KEY_ISLAND_MEDIA_LYRICS_PEEK ->
+                        isIslandMediaLyricsPeek.value = settingsRepository.isIslandMediaLyricsPeekEnabled()
+
+                    SettingsRepository.KEY_LIQUID_GLASS_ENABLED ->
+                        isLiquidGlassEnabled.value = settingsRepository.isLiquidGlassEnabled()
 
                     SettingsRepository.KEY_ISLAND_MEDIA_KEEP_WHEN_PAUSED ->
                         isIslandMediaKeepWhenPaused.value = settingsRepository.isIslandMediaKeepWhenPausedEnabled()
@@ -2592,6 +2604,9 @@ class MainViewModel : ViewModel() {
         islandTimeoutMs.longValue = settingsRepository.getIslandTimeoutMs()
         isIslandLineStageEnabled.value = settingsRepository.isIslandLineStageEnabled()
         isIslandMediaPeekSongChange.value = settingsRepository.isIslandMediaPeekSongChangeEnabled()
+        isIslandMediaLyrics.value = settingsRepository.isIslandMediaLyricsEnabled()
+        isIslandMediaLyricsPeek.value = settingsRepository.isIslandMediaLyricsPeekEnabled()
+        isLiquidGlassEnabled.value = settingsRepository.isLiquidGlassEnabled()
         isIslandMediaKeepWhenPaused.value = settingsRepository.isIslandMediaKeepWhenPausedEnabled()
         isIslandMediaShowPrevious.value = settingsRepository.isIslandMediaShowPreviousEnabled()
         isIslandMediaUseArtColor.value = settingsRepository.isIslandMediaUseArtColorEnabled()
@@ -6106,6 +6121,21 @@ class MainViewModel : ViewModel() {
     fun setIslandMediaPeekSongChange(enabled: Boolean) {
         isIslandMediaPeekSongChange.value = enabled
         settingsRepository.setIslandMediaPeekSongChangeEnabled(enabled)
+    }
+
+    fun setIslandMediaLyrics(enabled: Boolean) {
+        isIslandMediaLyrics.value = enabled
+        settingsRepository.setIslandMediaLyricsEnabled(enabled)
+    }
+
+    fun setIslandMediaLyricsPeek(enabled: Boolean) {
+        isIslandMediaLyricsPeek.value = enabled
+        settingsRepository.setIslandMediaLyricsPeekEnabled(enabled)
+    }
+
+    fun setLiquidGlassEnabled(enabled: Boolean) {
+        isLiquidGlassEnabled.value = enabled
+        settingsRepository.setLiquidGlassEnabled(enabled)
     }
 
     fun setIslandMediaKeepWhenPaused(enabled: Boolean) {

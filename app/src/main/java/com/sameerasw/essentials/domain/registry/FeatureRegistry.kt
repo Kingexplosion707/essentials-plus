@@ -913,6 +913,16 @@ object FeatureRegistry {
                             "island_media_peek_song_change",
                         ),
                         SearchSetting(
+                            R.string.island_media_lyrics_title,
+                            R.string.island_media_lyrics_desc,
+                            "island_media_lyrics",
+                        ),
+                        SearchSetting(
+                            R.string.island_media_lyrics_peek_title,
+                            R.string.island_media_lyrics_peek_desc,
+                            "island_media_lyrics_peek",
+                        ),
+                        SearchSetting(
                             R.string.island_media_show_previous_title,
                             R.string.duo_show_media_title,
                             "island_media_show_previous",

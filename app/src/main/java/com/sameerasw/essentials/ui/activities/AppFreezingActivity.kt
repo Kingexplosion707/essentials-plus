@@ -9,6 +9,8 @@
 
 package com.sameerasw.essentials.ui.activities
 
+import com.sameerasw.essentials.ui.theme.glassPageBackground
+import com.sameerasw.essentials.ui.theme.glassPageContainerColor
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
@@ -73,8 +75,9 @@ class AppFreezingActivity : ComponentActivity() {
                     LocalMenuStateManager provides remember { MenuStateManager() },
                 ) {
                     Scaffold(
+                        modifier = Modifier.glassPageBackground(),
                         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        containerColor = glassPageContainerColor,
                     ) { innerPadding ->
                         val density = LocalDensity.current
                         val statusBarHeightPx =

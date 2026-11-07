@@ -43,6 +43,7 @@ class MediaPlugin : BaseIslandPlugin() {
         SettingsRepository.KEY_ISLAND_MEDIA_SHOW_LIKE,
         SettingsRepository.KEY_ISLAND_MEDIA_USE_ART_COLOR,
         SettingsRepository.KEY_ISLAND_MEDIA_PLAYER_STYLE,
+        SettingsRepository.KEY_ISLAND_MEDIA_LYRICS,
     )
 
     private val ART_RETRY_DELAYS_MS = longArrayOf(1500L, 3000L)
@@ -61,6 +62,8 @@ class MediaPlugin : BaseIslandPlugin() {
     private var track: Track? = null
     private var playing = false
     private var liked = false
+    private var lyricsFeed: LyricsFeed? = null
+    private var lyric: LyricsFeed.LyricLine? = null
 
     private var lastController: MediaController? = null
     private var lastTrack: Track? = null
@@ -71,7 +74,9 @@ class MediaPlugin : BaseIslandPlugin() {
     }
 
     override fun onStart() {
-        source = MediaSessionSource(context, ctx!!.mainHandler) { evaluate() }.also { it.start() }
+        val c = ctx!!
+        lyricsFeed = LyricsFeed(context, c.scope, c.mainHandler) { line -> onLyric(line) }.also { it.start() }
+        source = MediaSessionSource(context, c.mainHandler) { evaluate() }.also { it.start() }
     }
 
     override fun onStop() {
@@ -81,6 +86,9 @@ class MediaPlugin : BaseIslandPlugin() {
         ctx?.mainHandler?.removeCallbacks(pausedGrace)
         source?.stop()
         source = null
+        lyricsFeed?.stop()
+        lyricsFeed = null
+        lyric = null
         active = null
         track = null
     }
@@ -179,9 +187,12 @@ class MediaPlugin : BaseIslandPlugin() {
         publishLastPlayer()
         if (t == null || controller == null) {
             publish(null)
+            lyricsFeed?.follow(null)
             return
         }
         val artAccent = artAccent(t)
+        val lyricText = lyric?.text?.takeIf { settings.isIslandMediaLyricsEnabled() }
+        val lyricLine = lyricText?.let { splitAroundCamera(it) }
         val playerStyle = MediaPlayerStyle.from(settings.getIslandMediaPlayerStyle())
         val isPlaying = playing
         val isLiked = liked
@@ -213,14 +224,21 @@ class MediaPlugin : BaseIslandPlugin() {
                         }
                     },
                 ),
-                line = LineContent(
+                line = lyricLine?.let { (first, second) ->
+                    LineContent(
+                        icon = { IslandBitmap(t.artwork, 24.dp, circle = true) },
+                        start = first,
+                        end = second,
+                        endSlot = { EqualizerBars(isPlaying, mediaAccent(artAccent)) },
+                    )
+                } ?: LineContent(
                     icon = { IslandBitmap(t.artwork, 24.dp, circle = true) },
                     start = t.artist,
                     end = t.title,
                     endSlot = { EqualizerBars(isPlaying, mediaAccent(artAccent)) },
                 ),
                 expanded = ExpandedContent { scope ->
-                    MediaExpanded(t.title, t.artist, t.artwork, mediaAccent(t.accent?.let { Color(it) }), isPlaying, isLiked, actions, scope, canSkipBack = canSkipBack, canSkipForward = canSkipForward, packageName = t.packageName, style = playerStyle)
+                    MediaExpanded(t.title, t.artist, t.artwork, mediaAccent(t.accent?.let { Color(it) }), isPlaying, isLiked, actions, scope, canSkipBack = canSkipBack, canSkipForward = canSkipForward, packageName = t.packageName, style = playerStyle, lyric = lyricText)
                 },
                 accent = artAccent,
                 onOpen = { openPlayer() },
@@ -228,6 +246,35 @@ class MediaPlugin : BaseIslandPlugin() {
                 hideExpandedQueue = true,
             ),
         )
+        lyricsFeed?.follow(if (settings.isIslandMediaLyricsEnabled()) controller else null)
+    }
+
+    private fun onLyric(line: LyricsFeed.LyricLine?) {
+        lyric = line
+        render()
+        val c = ctx ?: return
+        if (line == null || active == null || !settings.isIslandMediaLyricsEnabled()) return
+        if (!settings.isIslandMediaLyricsPeekEnabled()) return
+        // Hold the pill open until the next line (when known), so lines flow without flicker.
+        val hold = line.nextChangeInMs?.plus(LYRIC_HOLD_SLACK_MS) ?: LYRIC_DEFAULT_HOLD_MS
+        c.request(PluginRequest.Peek(ITEM_KEY, hold.coerceIn(LYRIC_MIN_HOLD_MS, LYRIC_MAX_HOLD_MS)))
+    }
+
+    /** Splits a lyric line into the parts drawn either side of the camera, at a word near the middle. */
+    private fun splitAroundCamera(text: String): Pair<String, String> {
+        val words = text.trim().split(Regex("\\s+"))
+        if (words.size < 2) return text.trim() to ""
+        val total = text.length
+        var used = 0
+        var cut = 1
+        for (i in words.indices) {
+            used += words[i].length + 1
+            if (used >= total / 2) {
+                cut = (i + 1).coerceIn(1, words.size - 1)
+                break
+            }
+        }
+        return words.take(cut).joinToString(" ") to words.drop(cut).joinToString(" ")
     }
 
     private fun publishLastPlayer() {
@@ -315,5 +362,9 @@ class MediaPlugin : BaseIslandPlugin() {
         const val ID = "media"
         const val ITEM_KEY = "media"
         private const val PAUSED_GRACE_MS = 3000L
+        private const val LYRIC_HOLD_SLACK_MS = 1_200L
+        private const val LYRIC_DEFAULT_HOLD_MS = 6_000L
+        private const val LYRIC_MIN_HOLD_MS = 2_500L
+        private const val LYRIC_MAX_HOLD_MS = 10_000L
     }
 }

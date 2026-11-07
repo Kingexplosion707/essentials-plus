@@ -715,6 +715,9 @@ class SettingsRepository(
         const val KEY_ISLAND_LINE_STAGE_ENABLED = "island_line_stage_enabled"
         const val KEY_ISLAND_PEEK_DURATION_MS = "island_peek_duration_ms"
         const val KEY_ISLAND_MEDIA_PEEK_SONG_CHANGE = "island_media_peek_song_change"
+        const val KEY_ISLAND_MEDIA_LYRICS = "island_media_lyrics"
+        const val KEY_ISLAND_MEDIA_LYRICS_PEEK = "island_media_lyrics_peek"
+        const val KEY_LIQUID_GLASS_ENABLED = "liquid_glass_enabled"
         const val KEY_ISLAND_MEDIA_KEEP_WHEN_PAUSED = "island_media_keep_when_paused"
         const val KEY_ISLAND_MEDIA_SHOW_PREVIOUS = "island_media_show_previous"
         const val KEY_ISLAND_MEDIA_USE_ART_COLOR = "island_media_use_art_color"
@@ -4448,6 +4451,17 @@ class SettingsRepository(
 
     fun isIslandMediaPeekSongChangeEnabled(): Boolean = getBoolean(KEY_ISLAND_MEDIA_PEEK_SONG_CHANGE, true)
     fun setIslandMediaPeekSongChangeEnabled(enabled: Boolean) = putBoolean(KEY_ISLAND_MEDIA_PEEK_SONG_CHANGE, enabled)
+
+    /** Live lyrics in the media complication: from the Spicy Lyrics app, else LRCLIB. */
+    fun isIslandMediaLyricsEnabled(): Boolean = getBoolean(KEY_ISLAND_MEDIA_LYRICS, true)
+    fun setIslandMediaLyricsEnabled(enabled: Boolean) = putBoolean(KEY_ISLAND_MEDIA_LYRICS, enabled)
+
+    /** Whether each new lyric line opens the island as a line peek (the lyrics pill). */
+    fun isIslandMediaLyricsPeekEnabled(): Boolean = getBoolean(KEY_ISLAND_MEDIA_LYRICS_PEEK, true)
+    fun setIslandMediaLyricsPeekEnabled(enabled: Boolean) = putBoolean(KEY_ISLAND_MEDIA_LYRICS_PEEK, enabled)
+
+    fun isLiquidGlassEnabled(): Boolean = getBoolean(KEY_LIQUID_GLASS_ENABLED, true)
+    fun setLiquidGlassEnabled(enabled: Boolean) = putBoolean(KEY_LIQUID_GLASS_ENABLED, enabled)
 
     fun isIslandMediaKeepWhenPausedEnabled(): Boolean = getBoolean(KEY_ISLAND_MEDIA_KEEP_WHEN_PAUSED, true)
     fun setIslandMediaKeepWhenPausedEnabled(enabled: Boolean) = putBoolean(KEY_ISLAND_MEDIA_KEEP_WHEN_PAUSED, enabled)

@@ -652,6 +652,14 @@ fun SettingsContent(
                 isChecked = viewModel.isPitchBlackThemeEnabled.value,
                 onCheckedChange = { viewModel.setPitchBlackThemeEnabled(it, context) },
             )
+
+            IconToggleItem(
+                iconRes = R.drawable.rounded_water_drop_24,
+                title = stringResource(R.string.setting_liquid_glass_title),
+                description = stringResource(R.string.setting_liquid_glass_desc),
+                isChecked = viewModel.isLiquidGlassEnabled.value,
+                onCheckedChange = { viewModel.setLiquidGlassEnabled(it) },
+            )
             val isBlurProblematic = remember { DeviceUtils.isBlurProblematicDevice() }
 
             IconToggleItem(

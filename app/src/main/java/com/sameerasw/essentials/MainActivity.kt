@@ -9,6 +9,8 @@
 
 package com.sameerasw.essentials
 
+import com.sameerasw.essentials.ui.theme.glassPageBackground
+import com.sameerasw.essentials.ui.theme.glassPageContainerColor
 import com.sameerasw.essentials.ui.navigation.LocalOpenAutomationId
 import androidx.compose.runtime.CompositionLocalProvider
 import com.sameerasw.essentials.ui.navigation.openFeatureIds
@@ -630,6 +632,7 @@ class MainActivity : AppCompatActivity() {
                     }
                     Box(modifier = Modifier.fillMaxSize()) {
                         Scaffold(
+                            modifier = Modifier.glassPageBackground(),
                             contentWindowInsets =
                                 WindowInsets(
                                     0,
@@ -637,7 +640,7 @@ class MainActivity : AppCompatActivity() {
                                     0,
                                     0,
                                 ),
-                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                            containerColor = glassPageContainerColor,
                             topBar = {},
                         ) { innerPadding ->
                             val statusBarHeightPx =

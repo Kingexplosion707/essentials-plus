@@ -20,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.sameerasw.essentials.ui.theme.liquidGlassEdge
 
 @Composable
 fun RoundedCardContainer(
@@ -29,11 +30,13 @@ fun RoundedCardContainer(
     containerColor: Color = Color.Transparent,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val shape = RoundedCornerShape(cornerRadius)
     Column(
         modifier =
             modifier
-                .clip(RoundedCornerShape(cornerRadius))
-                .background(containerColor),
+                .clip(shape)
+                .background(containerColor)
+                .liquidGlassEdge(shape),
         verticalArrangement = Arrangement.spacedBy(spacing),
         content = content,
     )

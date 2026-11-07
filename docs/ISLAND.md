@@ -133,6 +133,17 @@ Expanded content owns its own padding so backgrounds can go full-bleed. It must 
 
 ---
 
+## Live lyrics
+
+The media plugin shows the line being sung while music plays. `island/plugins/media/LyricsFeed.kt` picks the source:
+
+1. **Spicy Lyrics Plus** (`com.behnoud.spicylyrics`): when its "Lyrics notification" is on, `NotificationListener` hands that notification to `utils/lyrics/SpicyLyricsBridge.kt` instead of treating it as a notification. Its title is the line; its text is "Title — Artist", which must match the playing track.
+2. **LRCLIB**, through the `:core` lyrics engine (`utils/lyrics/LrclibLyrics.kt`), when Spicy isn't installed or isn't posting lines for this song. Line-synced LRC is timed against the media session position.
+
+The line replaces the artist and title in the Line stage (split either side of the camera) and the artist in the expanded player. With "Lyrics pill" on, each new line requests a `Peek` held until the next line. Settings: `KEY_ISLAND_MEDIA_LYRICS`, `KEY_ISLAND_MEDIA_LYRICS_PEEK`.
+
+---
+
 ## Provider apps
 
 Features that live in another app do not belong in this module. Instead of adding a plugin, the other app implements an island provider and Essentials hosts it through `RemoteProvidersPlugin`: the app sends compact and line data and draws its own expanded view, and the user approves it once. Weather comes from Overcast this way. The full contract, security model and a worked example are in [ISLAND_PROVIDERS.md](ISLAND_PROVIDERS.md).

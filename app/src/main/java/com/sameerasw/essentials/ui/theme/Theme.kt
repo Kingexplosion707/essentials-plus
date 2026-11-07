@@ -42,9 +42,12 @@ fun EssentialsTheme(
     pitchBlackTheme: Boolean = false,
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,
+    // Liquid Glass surfaces; null follows the app setting (on by default).
+    liquidGlass: Boolean? = null,
     content: @Composable () -> Unit,
 ) {
-    val colorScheme =
+    val glassEnabled = liquidGlass ?: rememberLiquidGlassSetting()
+    val baseScheme =
         when {
             dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
                 val context = LocalContext.current
@@ -79,9 +82,11 @@ fun EssentialsTheme(
 
             else -> LightColorScheme
         }
+    val colorScheme = if (glassEnabled) liquidGlassColors(baseScheme, darkTheme) else baseScheme
+    val glassStyle = LiquidGlassStyle(enabled = glassEnabled, dark = darkTheme, pitchBlack = darkTheme && pitchBlackTheme)
 
     val gatedHaptics = HapticUtil.gate(LocalContext.current, LocalHapticFeedback.current)
-    CompositionLocalProvider(LocalHapticFeedback provides gatedHaptics) {
+    CompositionLocalProvider(LocalHapticFeedback provides gatedHaptics, LocalLiquidGlass provides glassStyle) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = Typography,

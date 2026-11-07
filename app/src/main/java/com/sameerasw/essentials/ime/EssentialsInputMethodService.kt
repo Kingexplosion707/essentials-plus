@@ -436,6 +436,8 @@ class EssentialsInputMethodService :
                 EssentialsTheme(
                     darkTheme = useDarkTheme,
                     pitchBlackTheme = isPitchBlack,
+                    // The keyboard draws over other apps: keep it solid.
+                    liquidGlass = false,
                 ) {
                     KeyboardInputView(
                         keyboardHeight = keyboardHeight.dp,

@@ -792,6 +792,30 @@ fun IslandSettingsUI(
                             )
                         }
                         IconToggleItem(
+                            iconRes = R.drawable.rounded_music_note_24,
+                            title = stringResource(R.string.island_media_lyrics_title),
+                            description = stringResource(R.string.island_media_lyrics_desc),
+                            isChecked = viewModel.isIslandMediaLyrics.value,
+                            onCheckedChange = { checked ->
+                                HapticUtil.performVirtualKeyHaptic(view)
+                                viewModel.setIslandMediaLyrics(checked)
+                            },
+                            modifier = Modifier.highlight(highlightSetting == "island_media_lyrics"),
+                        )
+                        if (viewModel.isIslandLineStageEnabled.value && viewModel.isIslandMediaLyrics.value) {
+                            IconToggleItem(
+                                iconRes = R.drawable.rounded_music_note_24,
+                                title = stringResource(R.string.island_media_lyrics_peek_title),
+                                description = stringResource(R.string.island_media_lyrics_peek_desc),
+                                isChecked = viewModel.isIslandMediaLyricsPeek.value,
+                                onCheckedChange = { checked ->
+                                    HapticUtil.performVirtualKeyHaptic(view)
+                                    viewModel.setIslandMediaLyricsPeek(checked)
+                                },
+                                modifier = Modifier.highlight(highlightSetting == "island_media_lyrics_peek"),
+                            )
+                        }
+                        IconToggleItem(
                             iconRes = R.drawable.rounded_pause_24,
                             title = stringResource(R.string.island_media_keep_when_paused_title),
                             isChecked = viewModel.isIslandMediaKeepWhenPaused.value,

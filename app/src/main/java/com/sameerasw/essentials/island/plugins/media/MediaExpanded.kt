@@ -119,6 +119,8 @@ fun MediaExpanded(
     drawBackground: Boolean = true,
     packageName: String? = null,
     style: MediaPlayerStyle = MediaPlayerStyle.Default,
+    /** The lyric line being sung; shown in place of the artist while it lasts. */
+    lyric: String? = null,
 ) {
     val spec = scope.spec
     val context = LocalContext.current
@@ -245,7 +247,7 @@ fun MediaExpanded(
                     ) {
                         titleText()
                         MarqueeText(
-                            text = artist,
+                            text = lyric ?: artist,
                             style = IslandTextStyles.body,
                             modifier = Modifier.fillMaxWidth(),
                         )
@@ -262,7 +264,7 @@ fun MediaExpanded(
                     Column(Modifier.weight(1f)) {
                         titleText()
                         MarqueeText(
-                            text = artist,
+                            text = lyric ?: artist,
                             style = IslandTextStyles.body,
                             modifier = Modifier.fillMaxWidth(),
                         )

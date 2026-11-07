@@ -9,6 +9,7 @@
 
 package com.sameerasw.essentials
 
+import com.sameerasw.essentials.ui.theme.glassPageBackground
 import com.sameerasw.essentials.ui.navigation.LocalSelectedFeatureIds
 import androidx.fragment.app.FragmentActivity
 import android.content.Intent
@@ -28,7 +29,6 @@ import android.widget.Toast
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -577,7 +577,7 @@ fun FeatureSettingsScreen(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surfaceContainer),
+                        .glassPageBackground(),
             ) {
                 val hasScroll =
                     featureId != "Sound mode tile" &&

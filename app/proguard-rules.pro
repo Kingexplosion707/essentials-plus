@@ -64,3 +64,7 @@
 -keep class com.sameerasw.essentials.appfunctions.** { *; }
 -keep class androidx.appfunctions.** { *; }
 
+
+# :core lyrics engine: Gson reads LRCLIB responses into these by reflection
+-keep class com.tx24.spicyplayer.network.model.** { <fields>; <init>(...); }
+-keepclassmembers class com.tx24.spicyplayer.network.data.RemoteLyricsPayload { <fields>; }
