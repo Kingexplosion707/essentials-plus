@@ -1,5 +1,6 @@
 package com.sameerasw.essentials.island.plugins.timebattery
 
+import com.sameerasw.essentials.island.state.IslandStillness
 import com.sameerasw.essentials.island.ui.components.islandAccent
 
 import com.sameerasw.essentials.island.ui.islandTextColor
@@ -93,11 +94,11 @@ class TimeBatteryPlugin : BaseIslandPlugin() {
     }
 
     private enum class PeekReason { Charging, Saver, Low, Critical }
-    private val secondsTick = object : Runnable {
+    private val clockTick = object : Runnable {
         override fun run() {
             readTime()
             render()
-            scheduleSecondsTick()
+            scheduleClockTick()
         }
     }
 
@@ -131,12 +132,12 @@ class TimeBatteryPlugin : BaseIslandPlugin() {
                     }
                 }
                 Intent.ACTION_SCREEN_OFF -> {
-                    ctx?.mainHandler?.removeCallbacks(secondsTick)
+                    ctx?.mainHandler?.removeCallbacks(clockTick)
                     return
                 }
                 Intent.ACTION_SCREEN_ON -> {
                     readTime()
-                    scheduleSecondsTick()
+                    scheduleClockTick()
                 }
                 else -> readTime()
             }
@@ -159,12 +160,12 @@ class TimeBatteryPlugin : BaseIslandPlugin() {
             },
         )
         registered = true
-        scheduleSecondsTick()
+        scheduleClockTick()
     }
 
     override fun onStop() {
         ctx?.mainHandler?.removeCallbacks(endPeek)
-        ctx?.mainHandler?.removeCallbacks(secondsTick)
+        ctx?.mainHandler?.removeCallbacks(clockTick)
         if (registered) {
             try {
                 context.unregisterReceiver(receiver)
@@ -179,17 +180,18 @@ class TimeBatteryPlugin : BaseIslandPlugin() {
         readTime()
         readBattery(null)
         render()
-        scheduleSecondsTick()
+        scheduleClockTick()
     }
 
-    private fun scheduleSecondsTick() {
+    private fun scheduleClockTick() {
         val handler = ctx?.mainHandler ?: return
-        handler.removeCallbacks(secondsTick)
-        if (!registered || !settings.isIslandShowTimeBatteryEnabled() || !showSeconds()) return
-        handler.postDelayed(secondsTick, 1000L - System.currentTimeMillis() % 1000L)
+        handler.removeCallbacks(clockTick)
+        if (!registered || !settings.isIslandShowTimeBatteryEnabled()) return
+        val now = System.currentTimeMillis()
+        handler.postDelayed(clockTick, if (showSeconds()) 1000L - now % 1000L else IslandStillness.msToNextMinute(now))
     }
 
-    private fun showSeconds() = settings.getBoolean(SettingsRepository.KEY_ISLAND_TIME_SHOW_SECONDS, false)
+    private fun showSeconds() = settings.getBoolean(SettingsRepository.KEY_ISLAND_TIME_SHOW_SECONDS, false) && !IslandStillness.isStill
 
     private fun readTime() {
         time = IslandTimeFormat.format(context, settings, System.currentTimeMillis(), seconds = showSeconds())
@@ -253,6 +255,9 @@ class TimeBatteryPlugin : BaseIslandPlugin() {
         val timeText = time
         val dayText = day
         val batteryLevel = level
+        val isCharging = charging
+        val isSaving = powerSave
+        val isLimited = shielded
         val stateColor = stateColor()
         val displayColor = stateColor ?: idleColor()
         val iconStyle = settings.getIslandBatteryStyle() == SettingsRepository.ISLAND_BATTERY_STYLE_ICON
@@ -271,7 +276,7 @@ class TimeBatteryPlugin : BaseIslandPlugin() {
             placement = CompactPlacement.Pinned,
             needsCompanyAtCenter = settings.isIslandBatteryIconConditional(),
             chip = settings.getBoolean(SettingsRepository.KEY_ISLAND_TIME_CHIP, false),
-            interactions = if (settings.getBoolean(SettingsRepository.KEY_ISLAND_TIME_TAP_OPENS_CLOCK, true)) {
+            interactions = if (settings.getBoolean(SettingsRepository.KEY_ISLAND_TIME_TAP_OPENS_CLOCK, false)) {
                 InteractionOverrides(onTap = { openClock(); true })
             } else {
                 InteractionOverrides.Default
@@ -301,7 +306,7 @@ class TimeBatteryPlugin : BaseIslandPlugin() {
             compact = listOf(
                 CompactCell("battery") {
                     when {
-                        iconStyle -> BatteryGlyph(batteryLevel, displayColor ?: islandAccent(), showLevel = showLevel)
+                        iconStyle -> BatteryGlyph(batteryLevel, displayColor ?: islandAccent(), showLevel = showLevel, charging = isCharging, powerSave = isSaving, limited = isLimited)
                         else -> BatteryRing(batteryLevel, displayColor ?: islandAccent(), showLevel = showLevel)
                     }
                 },

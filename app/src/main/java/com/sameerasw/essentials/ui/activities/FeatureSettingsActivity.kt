@@ -9,6 +9,7 @@
 
 package com.sameerasw.essentials
 
+import com.sameerasw.essentials.translation.TranslatableText
 import com.sameerasw.essentials.ui.navigation.LocalSelectedFeatureIds
 import androidx.fragment.app.FragmentActivity
 import android.content.Intent
@@ -94,6 +95,8 @@ import com.sameerasw.essentials.ui.features.display.AodWallpaperSettingsUI
 import com.sameerasw.essentials.ui.features.display.DuoSettingsUI
 import com.sameerasw.essentials.ui.features.display.ISLAND_BEHAVIOR_FEATURE_ID
 import com.sameerasw.essentials.ui.features.display.ISLAND_DURATION_FEATURE_ID
+import com.sameerasw.essentials.ui.features.display.ISLAND_INTERACTIONS_FEATURE_ID
+import com.sameerasw.essentials.ui.features.display.IslandInteractionsSettingsUI
 import com.sameerasw.essentials.ui.features.display.ISLAND_NOTIFICATIONS_FEATURE_ID
 import com.sameerasw.essentials.ui.features.display.ISLAND_PLACEMENT_FEATURE_ID
 import com.sameerasw.essentials.ui.features.display.ISLAND_SUB_PAGE_IDS
@@ -504,6 +507,11 @@ fun FeatureSettingsScreen(
 
             ShakeForHelp(feature = featureObj, viewModel = viewModel)
 
+            var showWhatIsThis by remember { mutableStateOf(false) }
+            if (showWhatIsThis) {
+                com.sameerasw.essentials.ui.core.sheets.FeatureHelpSheet(featureObj, viewModel) { showWhatIsThis = false }
+            }
+
             val pageTitle =
                 if (featureObj != null) stringResource(featureObj.title) else featureId
             val hasMenu = featureObj != null && featureObj.aboutDescription != null
@@ -797,8 +805,8 @@ fun FeatureSettingsScreen(
 
                         sectionChildLists.forEach { sectionChildren ->
                             if (featureId == "Watch" && sectionChildren.any { it.id == "Calendar Sync" }) {
-                                Text(
-                                    text = stringResource(R.string.cat_sync),
+                                TranslatableText(
+                                    stringResId = R.string.cat_sync,
                                     style = MaterialTheme.typography.titleMedium,
                                     modifier = Modifier.padding(start = 32.dp, top = 24.dp, bottom = 4.dp),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1356,6 +1364,14 @@ fun FeatureSettingsScreen(
                                 )
                             }
 
+                            ISLAND_INTERACTIONS_FEATURE_ID -> {
+                                IslandInteractionsSettingsUI(
+                                    viewModel = viewModel,
+                                    modifier = Modifier.padding(top = 16.dp),
+                                    highlightSetting = highlightSetting,
+                                )
+                            }
+
                             ISLAND_NOTIFICATIONS_FEATURE_ID -> {
                                 IslandNotificationSettingsUI(
                                     viewModel = viewModel,
@@ -1487,6 +1503,12 @@ fun FeatureSettingsScreen(
                                 )
                             }
                         }
+                    }
+                    if (featureObj != null && hasScroll) {
+                        com.sameerasw.essentials.ui.core.sheets.WhatIsThisButton(
+                            onClick = { showWhatIsThis = true },
+                            modifier = Modifier.padding(top = 24.dp),
+                        )
                     }
                     // Bottom padding for toolbar
                     if (featureId != "Quick settings tiles" && featureId != "Location reached") {

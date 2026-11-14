@@ -33,6 +33,9 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import com.sameerasw.essentials.island.plugins.media.IslandMediaState
+import com.sameerasw.essentials.island.ui.IslandSurfaceAccent
+import com.sameerasw.essentials.island.plugins.media.MediaPlugin
+import com.sameerasw.essentials.island.model.PluginRequest
 import com.sameerasw.essentials.island.plugins.media.MediaExpanded
 import com.sameerasw.essentials.island.plugins.media.MediaSnapshot
 import com.sameerasw.essentials.island.plugins.media.mediaAccent
@@ -70,6 +73,7 @@ import androidx.compose.ui.platform.LocalDensity
 import com.sameerasw.essentials.island.plugins.calendar.CalendarExpanded
 import com.sameerasw.essentials.island.plugins.soften
 import com.sameerasw.essentials.island.ui.IslandHaptics
+import com.sameerasw.essentials.translation.TranslatableText
 import kotlinx.coroutines.launch
 import android.os.BatteryManager
 import android.os.Build
@@ -103,7 +107,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -164,11 +167,15 @@ class BriefPlugin : BaseIslandPlugin() {
         publish(
             IslandItem(
                 key = ITEM_KEY,
+                expandedParticles = true,
                 priority = IslandPriority.DEFAULT,
                 placement = CompactPlacement.Dynamic,
                 compact = listOf(CompactCell("brief.placeholder") {}),
                 expanded = ExpandedContent { scope ->
-                    BriefExpanded(scope, iconStyle, devicesIconStyle, alarmHours, calendarEnabled, calendarIds, showAllDay, showGlow, twoLineHeader) { open ->
+                    BriefExpanded(
+                        scope, iconStyle, devicesIconStyle, alarmHours, calendarEnabled, calendarIds, showAllDay, showGlow, twoLineHeader,
+                        onOpenLivePlayer = { ctx?.request?.invoke(PluginRequest.Expand(MediaPlugin.ITEM_KEY)) },
+                    ) { open ->
                         pageOpen = open
                     }
                 },
@@ -194,6 +201,7 @@ private fun BriefExpanded(
     showAllDay: Boolean,
     showGlow: Boolean,
     twoLineHeader: Boolean,
+    onOpenLivePlayer: () -> Unit,
     onPageOpenChanged: ((() -> Unit)?) -> Unit,
 ) {
     val context = LocalContext.current
@@ -243,7 +251,7 @@ private fun BriefExpanded(
                         media = media,
                         twoLineHeader = twoLineHeader,
                         onEventClick = { page = BriefPage.Event(it) },
-                        onPlayerClick = { page = BriefPage.Player },
+                        onPlayerClick = { if (IslandMediaState.live.value) onOpenLivePlayer() else page = BriefPage.Player },
                         onCardClick = { page = BriefPage.Remote(it) },
                     )
                     is BriefPage.Event -> SwipeBackPage(scope, onBack = { page = BriefPage.Overview }) {
@@ -270,6 +278,7 @@ private fun BriefExpanded(
                     }
                     BriefPage.Player -> SwipeBackPage(scope, onBack = { page = BriefPage.Overview }) {
                         media?.let { m ->
+                            IslandSurfaceAccent(mediaAccent(m.playerAccent ?: m.accent))
                             MediaExpanded(m.title, m.artist, m.artwork, mediaAccent(m.playerAccent ?: m.accent), m.playing, m.liked, m.actions, scope, drawBackground = false, canSkipBack = m.canSkipBack, canSkipForward = m.canSkipForward, packageName = m.packageName, style = m.style)
                         }
                     }
@@ -457,7 +466,7 @@ private fun BriefOverview(
         
         Column(Modifier.fillMaxWidth().padding(spec.expandedOutset).padding(bottom = spec.expandedBottomPadding)) {
             Spacer(Modifier.height(spec.expandedTopPadding))
-            val headerPadding = spec.cameraGap + spec.expandedCorner * 0.35f
+            val headerPadding = spec.contentGap + spec.expandedCorner * 0.35f
             scope.CameraRow(
                 horizontalPadding = headerPadding,
                 start = {
@@ -517,8 +526,8 @@ private fun BriefOverview(
                     ) {
                         when {
                             list == null -> Unit
-                            list.isEmpty() -> Text(
-                                text = stringResource(R.string.island_brief_no_events),
+                            list.isEmpty() -> TranslatableText(
+                                stringResId = R.string.island_brief_no_events,
                                 style = IslandTextStyles.body,
                             )
                             else -> list.forEach { event -> BriefEventRow(event, now, accent) { onEventClick(event) } }
@@ -546,7 +555,7 @@ private fun BriefOverview(
                         val list = events
                         when {
                             list == null -> Unit
-                            list.isEmpty() -> add { Text(stringResource(R.string.island_brief_no_events), style = IslandTextStyles.body) }
+                            list.isEmpty() -> add { TranslatableText(R.string.island_brief_no_events, style = IslandTextStyles.body) }
                             else -> list.forEach { event -> add { BriefEventRow(event, now, accent) { onEventClick(event) } } }
                         }
                     }

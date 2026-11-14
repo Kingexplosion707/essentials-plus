@@ -34,7 +34,6 @@ import com.sameerasw.essentials.island.plugins.BaseIslandPlugin
 import com.sameerasw.essentials.island.plugins.launchPackage
 import com.sameerasw.essentials.island.plugins.sendPendingIntent
 import com.sameerasw.essentials.island.plugins.soften
-import com.sameerasw.essentials.island.ui.IslandStackBubble
 import com.sameerasw.essentials.island.ui.IslandStackOverlap
 import com.sameerasw.essentials.island.ui.components.IslandBitmap
 import com.sameerasw.essentials.island.ui.components.NotificationGlyph
@@ -48,8 +47,7 @@ class NotificationsPlugin : BaseIslandPlugin() {
     override val settingKeys = setOf(
         SettingsRepository.KEY_ISLAND_CATCH_UP_ENABLED,
         SettingsRepository.KEY_ISLAND_NOTIF_PEEK_STYLE,
-        SettingsRepository.KEY_ISLAND_NOTIF_QUEUE_STYLE,
-        SettingsRepository.KEY_ISLAND_NOTIF_QUEUE_INLINE,
+        SettingsRepository.KEY_ISLAND_SECONDARY_BUBBLE,
         SettingsRepository.KEY_ISLAND_LINE_STAGE_ENABLED,
         SettingsRepository.KEY_ISLAND_SHOW_GLOW,
         SettingsRepository.KEY_ISLAND_NOTIF_THEMED_BUBBLE,
@@ -254,7 +252,7 @@ class NotificationsPlugin : BaseIslandPlugin() {
     }
 
     private fun applyHub(allLive: List<ActiveNotificationAlert>) {
-        val live = allLive.filter { passesFilters(it) }
+        val live = allLive.filter { passesFilters(it, forHub = true) }
         val liveKeys = live.mapTo(HashSet()) { it.key }
         val stale = alerts.filter { it.key !in liveKeys && !it.key.startsWith("simulated_") }
         stale.forEach { removeQuietly(it.key) }
@@ -287,7 +285,7 @@ class NotificationsPlugin : BaseIslandPlugin() {
     }
 
     private fun addSilently(alert: ActiveNotificationAlert) {
-        if (!passesFilters(alert)) {
+        if (!passesFilters(alert, forHub = true)) {
             removeQuietly(alert.key)
             render()
             return
@@ -327,8 +325,8 @@ class NotificationsPlugin : BaseIslandPlugin() {
         if (ctx?.isContentSuppressed?.invoke() == true) clearAll() else render()
     }
 
-    private fun passesFilters(alert: ActiveNotificationAlert): Boolean {
-        if (alert.isSilent && settings.isIslandNotifSkipSilentEnabled()) return false
+    private fun passesFilters(alert: ActiveNotificationAlert, forHub: Boolean = false): Boolean {
+        if (alert.isSilent && settings.isIslandNotifSkipSilentEnabled() && (!forHub || (!alert.ongoing && !settings.isIslandNotifHubIncludeSilent()))) return false
         if (alert.blockedByDnd && settings.isIslandNotifFollowDndEnabled()) return false
         if (isOtp(alert) && settings.isIslandOtpBypassFilterEnabled()) return true
         if (!settings.isIslandNotifFilterAppsEnabled()) return true
@@ -514,7 +512,7 @@ class NotificationsPlugin : BaseIslandPlugin() {
     }
 
     private fun bubbleCells(): Int {
-        if (!hub() || settings.getIslandNotifQueueStyle() != SettingsRepository.ISLAND_NOTIF_QUEUE_STYLE_OVERLAP) return 1
+        if (!hub()) return 1
         val cap = settings.getIslandNotifHubIcons().let { if (it == 0) AUTO_CELL_ICONS else it }
         val count = hubEntries().size
         val shown = count.coerceIn(1, cap)
@@ -563,6 +561,12 @@ class NotificationsPlugin : BaseIslandPlugin() {
             ?.takeIf { mode == SettingsRepository.ISLAND_NOTIF_HUB_ORDER_DYNAMIC }
             ?.let { key -> byPriority.firstOrNull { entry -> entry.alerts.any { it.key == key } } }
         return if (pinned != null) listOf(pinned) + byPriority.filter { it !== pinned } else byPriority
+    }
+
+    private fun carouselOrder(): List<ActiveNotificationAlert> {
+        if (!hub()) return alerts
+        val ordered = hubEntries().asReversed().flatMap { it.alerts.asReversed() }
+        return alerts.filter { a -> ordered.none { it === a } } + ordered
     }
 
     private fun hubIconFor(entry: HubEntry): StackIcon {
@@ -653,7 +657,8 @@ class NotificationsPlugin : BaseIslandPlugin() {
         } else {
             null
         }
-        val stack = alerts.map { stackIconFor(it, current = it === alert) }
+        val row = carouselOrder()
+        val stack = row.map { stackIconFor(it, current = it === alert) }
         val waitingAlerts = waitingInOrder(alert).filter { !it.hubOnly && it.key !in seen }
         val queued = if (hub()) {
             hubEntries().filter { entry -> entry.alerts.none { it === alert } }.map { hubIconFor(it) }
@@ -661,13 +666,14 @@ class NotificationsPlugin : BaseIslandPlugin() {
             waitingAlerts.map { stackIconFor(it, current = false) }
         }
         val minimal = minimal()
-        val waiting = if (minimal) waitingAlerts.map { stackIconFor(it, current = false) } else emptyList()
-        val inlineQueue = minimal && waiting.isNotEmpty() && settings.isIslandNotifQueueInlineEnabled()
+        val waitingRow = alerts.filter { a -> waitingAlerts.any { it === a } }.asReversed()
+        val waiting = if (minimal) waitingRow.map { stackIconFor(it, current = false) } else emptyList()
+        val inlineQueue = minimal && waiting.isNotEmpty() && !settings.isIslandSecondaryBubbleEnabled()
         val bubble = when {
             minimal && waiting.isNotEmpty() && !inlineQueue -> SideBubble(
                 priority = SideBubblePriority.NOTIFICATION,
                 icons = waiting,
-                onOpen = { select(waiting.first().key) },
+                onOpen = { select(waitingAlerts.first().key) },
                 onDismiss = { clearWaiting() },
             )
             minimal -> null
@@ -677,7 +683,7 @@ class NotificationsPlugin : BaseIslandPlugin() {
                 icons = if (hub()) {
                     hubEntries().map { hubIconFor(it) }
                 } else {
-                    alerts.map { stackIconFor(it, current = false) }
+                    alerts.asReversed().map { stackIconFor(it, current = false) }
                 },
                 onOpen = { select(alert.key) },
                 onDismiss = if (hub()) null else ({ clearAll() }),
@@ -695,7 +701,7 @@ class NotificationsPlugin : BaseIslandPlugin() {
                     leadingCell = if (inlineQueue) queueCell(waiting) else null,
                     queue = next?.let {
                         QueueInfo(
-                            next = itemFor(it).withStack(null, alerts.map { a -> stackIconFor(a, current = a === it) }),
+                            next = itemFor(it).withStack(null, row.map { a -> stackIconFor(a, current = a === it) }),
                             onAdvance = { advanceQueue() },
                         )
                     },
@@ -709,10 +715,7 @@ class NotificationsPlugin : BaseIslandPlugin() {
     private fun queueEnabled() = settings.isIslandNotifQueueEnabled()
 
     private fun queueCell(icons: List<StackIcon>): CompactCell = CompactCell("notif.queue") {
-        when (settings.getIslandNotifQueueStyle()) {
-            SettingsRepository.ISLAND_NOTIF_QUEUE_STYLE_OVERLAP -> IslandStackOverlap(icons, 22.dp)
-            else -> IslandStackBubble(icons, 26.dp)
-        }
+        IslandStackOverlap(icons, 22.dp)
     }
 
     private fun clearWaiting() {
@@ -767,7 +770,7 @@ class NotificationsPlugin : BaseIslandPlugin() {
                 NotificationExpanded(
                     alert = alert,
                     sender = sender,
-                    message = message,
+                    message = alert.expandedText ?: message,
                     showGlow = showGlow,
                     onAction = { runAction(alert, it) },
                     onReply = { action, text -> sendReply(alert, action, text) },
