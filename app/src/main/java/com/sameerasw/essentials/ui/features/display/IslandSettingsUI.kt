@@ -573,6 +573,9 @@ fun IslandSettingsUI(
 
         IslandProvidersSection(onChanged = { providerVersion++ })
 
+        // Plus: how Spicy Lyrics' item takes the island.
+        com.sameerasw.essentials.plus.LyricsTakeoverSection()
+
         AnimatedVisibility(
             visible = viewModel.isDuoEnabled.value && viewModel.isIslandEnabled.value,
             enter = expandVertically() + fadeIn(),

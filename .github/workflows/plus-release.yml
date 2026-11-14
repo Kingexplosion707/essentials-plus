@@ -1,0 +1,113 @@
+name: Essentials Plus release
+
+# Every push to main builds the optimised (R8) APK, signs it and publishes it as the latest
+# release, which the app's updater offers. All builds share one signing key, so each installs over
+# the last: made here once and kept in this repository's Actions cache (never in the repository or
+# a log). The daily upstream check reads it too, so it doesn't expire.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: plus-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=512m -Dkotlin.daemon.jvm.options=-Xmx2048m"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.5.0'
+
+      - name: Look for the cached signing key
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/plus-key
+          key: essentials-plus-keystore-v1
+
+      - name: Restore or make the signing key
+        run: |
+          key="$RUNNER_TEMP/plus-key/plus.keystore"
+          if [ ! -s "$key" ]; then
+            mkdir -p "$(dirname "$key")"
+            keytool -genkeypair -keystore "$key" -storepass essentialsplus -keypass essentialsplus \
+              -alias essentialsplus -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Essentials Plus,O=Essentials Plus,C=US" > /dev/null 2>&1
+            echo "NEW_KEY=1" >> "$GITHUB_ENV"
+            echo "Made the signing key; it's kept in the Actions cache from now on."
+          fi
+          echo "KEYSTORE_PATH=$key" >> "$GITHUB_ENV"
+
+      - name: Keep the new signing key
+        if: env.NEW_KEY == '1'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/plus-key
+          key: essentials-plus-keystore-v1
+
+      - name: Build the optimised APK
+        env:
+          RUN: ${{ github.run_number }}
+        run: |
+          if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then gradle wrapper; fi
+          chmod +x gradlew
+          base=$(sed -nE 's/^\s*versionName = "([^"]+)".*/\1/p' app/build.gradle.kts | head -n 1)
+          code=$(sed -nE 's/^\s*versionCode = ([0-9]+).*/\1/p' app/build.gradle.kts | head -n 1)
+          echo "BASE_VERSION=$base" >> "$GITHUB_ENV"
+          # Plus numbering, on this runner only: the original's version with the build number,
+          # and a version code that keeps rising across Plus builds and the original's bumps.
+          sed -i -E "s/^(\s*)versionName = \"[^\"]+\"/\1versionName = \"${base}-plus.${RUN}\"/" app/build.gradle.kts
+          sed -i -E "s/^(\s*)versionCode = [0-9]+/\1versionCode = $((code * 10000 + RUN))/" app/build.gradle.kts
+          ./gradlew :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Sign it
+        run: |
+          tools=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)
+          unsigned=$(ls app/build/outputs/apk/release/*.apk | head -n 1)
+          "$tools/zipalign" -f -p 4 "$unsigned" aligned.apk
+          "$tools/apksigner" sign --ks "$KEYSTORE_PATH" --ks-pass pass:essentialsplus --key-pass pass:essentialsplus \
+            --ks-key-alias essentialsplus --out signed.apk aligned.apk
+          "$tools/apksigner" verify signed.apk
+
+      - name: Publish it
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN: ${{ github.run_number }}
+        run: |
+          tag="v${BASE_VERSION}-plus.${RUN}"
+          apk="essentials-plus-${tag}.apk"
+          cp signed.apk "$apk"
+          sha256sum "$apk" > "$apk.sha256"
+          previous=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName --jq '.[].tagName' \
+            | grep -E -- '-plus\.[0-9]+$' | sort -t. -k1,1 -V | awk 'END { print }')
+          since=""
+          if [ -n "$previous" ]; then
+            since=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$previous" --jq .target_commitish 2> /dev/null || true)
+          fi
+          if [ -n "$since" ] && git cat-file -e "$since^{commit}" 2> /dev/null && [ "$(git rev-parse "$since")" != "$GITHUB_SHA" ]; then
+            changes=$(git log --no-merges --format='- %s' "$since..$GITHUB_SHA" | awk 'NR <= 15')
+          fi
+          [ -n "${changes:-}" ] || changes=$(git log -1 --format='- %s')
+          printf '## Changed\n%s\n\nEssentials with the Plus additions, on top of the original %s. Signed with this repository'"'"'s shared key, so it installs over the previous Essentials Plus build (not over the original Essentials: uninstall that first).\n' "$changes" "$BASE_VERSION" > notes.md
+          gh release create "$tag" "$apk" "$apk.sha256" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "Essentials Plus ${BASE_VERSION} (build ${RUN})" --notes-file notes.md --latest
+          # Keep the five newest builds.
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName,createdAt \
+            --jq 'map(select(.tagName | test("-plus\\.[0-9]+$"))) | sort_by(.createdAt) | reverse | .[5:] | .[].tagName' \
+            | while read -r old; do gh release delete "$old" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true; done

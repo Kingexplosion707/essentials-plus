@@ -855,6 +855,7 @@ class IslandCoordinator(
         controller.secondaryBubbleEnabled = settings.isIslandSecondaryBubbleEnabled()
         controller.secondaryBubbleMax = settings.getIslandNotifHubIcons()
         controller.bubbleOnRight = settings.getIslandSecondaryBubbleSide() == SettingsRepository.ISLAND_CAMERA_POSITION_RIGHT
+        com.sameerasw.essentials.plus.LyricsTakeover.load(settings)
         controller.relayout()
         controller.expandedTimeoutMs = settings.getIslandExpandedTimeoutMs()
         applyPreviewRing()
@@ -1044,6 +1045,8 @@ class IslandCoordinator(
             SettingsRepository.KEY_ISLAND_SUPPRESS_SYSTEM_HEADS_UP ->
                 if (running) settings.applyHeadsUpSuppression(settings.isIslandSuppressSystemHeadsUpEnabled())
             in CONFIG_KEYS -> if (running) applyConfig()
+            // Plus: the lyrics layout's settings.
+            in com.sameerasw.essentials.plus.LyricsTakeover.KEYS -> if (running) applyConfig()
         }
         if (running) plugins.filter { key in it.settingKeys }.forEach { it.refresh() }
     }

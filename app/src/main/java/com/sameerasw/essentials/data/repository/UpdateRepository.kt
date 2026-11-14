@@ -19,13 +19,20 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 class UpdateRepository {
+    private companion object {
+        /** Plus: the fork whose releases this build updates from. */
+        const val PLUS_REPO = "Kingexplosion707/essentials-plus"
+    }
+
     suspend fun checkForUpdates(
         context: Context,
         isPreReleaseCheckEnabled: Boolean,
         currentVersion: String,
     ): UpdateInfo? =
         withContext(Dispatchers.IO) {
-            if (!isPreReleaseCheckEnabled) {
+            // Plus: Essentials Plus updates come from its own GitHub releases only (the original's
+            // builds are signed with another key and can't install over it).
+            if (PLUS_REPO.isEmpty() && !isPreReleaseCheckEnabled) {
                 try {
                     val autoUpdateHelper = AutoUpdateManagerHelper(context)
                     val updateFeatures =
@@ -66,9 +73,9 @@ class UpdateRepository {
             try {
                 val urlString =
                     if (isPreReleaseCheckEnabled) {
-                        "https://api.github.com/repos/sameerasw/essentials/releases"
+                        "https://api.github.com/repos/${PLUS_REPO.ifEmpty { "sameerasw/essentials" }}/releases"
                     } else {
-                        "https://api.github.com/repos/sameerasw/essentials/releases/latest"
+                        "https://api.github.com/repos/${PLUS_REPO.ifEmpty { "sameerasw/essentials" }}/releases/latest"
                     }
 
                 val url = URL(urlString)
@@ -130,9 +137,14 @@ class UpdateRepository {
         latest: String,
     ): Boolean =
         try {
-            val currentVer = SemanticVersion.parse(current)
-            val latestVer = SemanticVersion.parse(latest)
-            latestVer > currentVer
+            // Plus: Essentials Plus builds are numbered (…-plus.N): a higher number is newer.
+            val plusCurrent = current.substringAfterLast("-plus.", "").toIntOrNull()
+            val plusLatest = latest.substringAfterLast("-plus.", "").toIntOrNull()
+            when {
+                plusCurrent != null && plusLatest != null -> plusLatest > plusCurrent
+                plusLatest != null -> true
+                else -> SemanticVersion.parse(latest) > SemanticVersion.parse(current)
+            }
         } catch (e: Exception) {
             latest != current
         }

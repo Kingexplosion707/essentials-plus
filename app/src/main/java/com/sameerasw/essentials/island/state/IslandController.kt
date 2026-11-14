@@ -378,7 +378,13 @@ class IslandController(
         val anchor = anchorProvider()
         val mirrored = bubbleOnRight && anchor == CameraAnchor.Center
         fun CompactArrangement.flipped() = if (mirrored) CompactArrangement(after, before, visibleItems) else this
-        val arrangement = CompactLayoutEngine.arrange(
+        // Plus: Spicy Lyrics' item takes a side of the camera to itself while it's up.
+        val lyricsArrangement = if (anchor == CameraAnchor.Center) {
+            com.sameerasw.essentials.plus.LyricsTakeover.arrange(
+                items.filterValues { !(usesBubbleOnly && it.key == bubbleOwner?.key) && !(mediaBubble != null && it.key == mediaItem?.key) },
+            )
+        } else null
+        val arrangement = lyricsArrangement ?: CompactLayoutEngine.arrange(
             items.values.filter {
                 it.compactVisible && !(usesBubbleOnly && it.key == bubbleOwner?.key) && !(mediaBubble != null && it.key == mediaItem?.key)
             }.map { item ->

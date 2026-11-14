@@ -1,5 +1,14 @@
 # Essentials
 
+> **Essentials Plus** (this fork): the original Essentials with additions, kept up to date with
+> [sameerasw/essentials](https://github.com/sameerasw/essentials) every day. Builds are on
+> [Releases](https://github.com/Kingexplosion707/essentials-plus/releases), signed with this fork's
+> own key (uninstall the original first) and updating from here.
+>
+> - **Lyrics take a side of the island**: while [Spicy Lyrics Plus](https://github.com/Kingexplosion707/Spicy-Lyrics-Android-Extra)
+>   shows lyrics on the island, they get one side of the camera to themselves, with the clock on
+>   the other (Island settings → Lyrics).
+
 Essential tools, mods and workarounds for Pixels and other Androids
 
 
