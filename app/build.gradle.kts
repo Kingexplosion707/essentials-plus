@@ -179,7 +179,7 @@ android {
         }
         // Plus: the lyrics engine's Japanese romanizer ships the same notice in two jars.
         resources {
-            excludes += setOf("META-INF/CONTRIBUTORS.md", "META-INF/LICENSE.md", "META-INF/NOTICE.md")
+            excludes += setOf("META-INF/CONTRIBUTORS.md", "META-INF/LICENSE.md", "META-INF/NOTICE.md", "META-INF/README.md")
         }
     }
 }
