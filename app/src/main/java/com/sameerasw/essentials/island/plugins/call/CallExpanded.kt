@@ -1,7 +1,5 @@
 package com.sameerasw.essentials.island.plugins.call
 
-import com.sameerasw.essentials.island.ui.components.ArtworkBackdrop
-import androidx.compose.ui.graphics.asImageBitmap
 import android.graphics.Bitmap
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -61,9 +59,7 @@ fun CallExpanded(
     val sidePadding = spec.expandedPadding + spec.expandedCorner * 0.35f
     val on = remember(buttons.map { it.key }) { mutableStateListOf(*buttons.map { it.initialOn }.toTypedArray()) }
 
-    val image = remember(photo) { photo?.asImageBitmap() }
     Box(propagateMinConstraints = true) {
-        scope.ArtworkBackdrop(image, Modifier.matchParentSize())
         Column(
             modifier = Modifier.fillMaxWidth().padding(spec.expandedOutset),
             verticalArrangement = Arrangement.SpaceBetween,
@@ -71,10 +67,10 @@ fun CallExpanded(
             Column {
                 Spacer(Modifier.height(spec.expandedTopPadding))
                 scope.CameraRow(
-                    horizontalPadding = spec.cameraGap + spec.expandedCorner * 0.35f,
+                    horizontalPadding = spec.contentGap + spec.expandedCorner * 0.35f,
+                    title = caller,
                     start = {
                         IslandBitmap(photo, spec.cellSize, circle = true, fallbackRes = R.drawable.rounded_call_24)
-                        MarqueeText(text = caller, style = IslandTextStyles.title, modifier = Modifier.weight(1f))
                     },
                     end = {
                         if (ringing) {

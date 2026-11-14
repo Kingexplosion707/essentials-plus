@@ -1,0 +1,127 @@
+name: Essentials updates
+
+# Every day, brings the original Essentials' new work (sameerasw/essentials) into main with every
+# Plus change kept, checks that it builds, and starts the Plus release. If the merge needs a hand
+# (conflicts, or it doesn't build), it opens an issue labelled upstream-sync and leaves main alone.
+# Each run also reads the shared signing key, so the Actions cache keeps it.
+
+on:
+  schedule:
+    - cron: '23 8 * * *'     # every day: look for updates
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+  issues: write
+
+concurrency:
+  group: upstream-sync
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Keep the shared signing key warm
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/plus-key
+          key: essentials-plus-keystore-v1
+
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Merge the original's new work
+        id: merge
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git remote add upstream https://github.com/sameerasw/essentials.git
+          branch=$(git ls-remote --symref upstream HEAD | sed -nE 's#^ref: refs/heads/([^ \t]+).*#\1#p')
+          branch=${branch:-main}
+          git fetch --no-tags upstream "$branch"
+          if git merge-base --is-ancestor "upstream/$branch" HEAD; then
+            echo "status=current" >> "$GITHUB_OUTPUT"
+            echo "Already has everything from the original." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          echo "upstream=$(git rev-parse --short "upstream/$branch")" >> "$GITHUB_OUTPUT"
+          if git merge --no-edit "upstream/$branch" -m "Bring in the original Essentials ($(git rev-parse --short "upstream/$branch"))"; then
+            echo "status=merged" >> "$GITHUB_OUTPUT"
+          else
+            git diff --name-only --diff-filter=U > conflicts.txt
+            git merge --abort
+            echo "status=conflicts" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-java@v4
+        if: steps.merge.outputs.status == 'merged'
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        if: steps.merge.outputs.status == 'merged'
+        with:
+          gradle-version: '9.5.0'
+      - name: Check that it builds
+        id: build
+        if: steps.merge.outputs.status == 'merged'
+        continue-on-error: true
+        env:
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=512m -Dkotlin.daemon.jvm.options=-Xmx2048m"
+        run: |
+          if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then gradle wrapper; fi
+          chmod +x gradlew
+          ./gradlew :app:assembleDebug --no-daemon
+
+      # Pushes made with this workflow's token start no workflows, so the release is started by hand.
+      - name: Put it on main
+        if: steps.merge.outputs.status == 'merged' && steps.build.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! git push origin HEAD:main; then
+            # This workflow's token can't change workflow files; an update that does is merged by hand.
+            gh label create upstream-sync --repo "$GITHUB_REPOSITORY" --color FBCA04 \
+              --description "An update from the original Essentials to merge by hand" 2> /dev/null || true
+            gh issue create --repo "$GITHUB_REPOSITORY" --label upstream-sync \
+              --title "Essentials update ${{ steps.merge.outputs.upstream }} needs a hand" \
+              --body "The original Essentials (up to ${{ steps.merge.outputs.upstream }}) merged and builds, but couldn't be pushed to main (it likely changes the original's workflow files, which this workflow may not do). Merge \`sameerasw/essentials\` into main by hand, keeping every Plus change."
+            exit 0
+          fi
+          gh workflow run plus-release.yml --repo "$GITHUB_REPOSITORY" --ref main
+          echo "The original's work up to ${{ steps.merge.outputs.upstream }} is on main, with every Plus change kept; the release is on its way." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Ask for a hand
+        if: steps.merge.outputs.status == 'conflicts' || (steps.merge.outputs.status == 'merged' && steps.build.outcome != 'success')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STATUS: ${{ steps.merge.outputs.status }}
+          UPSTREAM: ${{ steps.merge.outputs.upstream }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh label create upstream-sync --repo "$GITHUB_REPOSITORY" --color FBCA04 \
+            --description "An update from the original Essentials to merge by hand" 2> /dev/null || true
+          if [ "$STATUS" = conflicts ]; then
+            files=$(sed 's/.*/- `&`/' conflicts.txt)
+            body="Merging the original Essentials (up to $UPSTREAM) into main ran into conflicts in:
+
+          $files
+
+          Merge \`sameerasw/essentials\` into main by hand, keeping the original's change **and** every Plus change (\`com.sameerasw.essentials.plus\` and the lines marked \`Plus:\`). ([Run]($RUN_URL))"
+          else
+            branch="upstream-sync/$UPSTREAM"
+            git push --force origin "HEAD:refs/heads/$branch"
+            body="The original Essentials (up to $UPSTREAM) merged without conflicts, but the build failed ([run]($RUN_URL)), so main was left as it was. The merge is on the \`$branch\` branch: fix it there, keeping every Plus change, and open a pull request into main."
+          fi
+          title="Essentials update $UPSTREAM needs a hand"
+          existing=$(gh issue list --repo "$GITHUB_REPOSITORY" --label upstream-sync --state open --json number,title \
+            --jq ".[] | select(.title == \"$title\") | .number" | awk 'NR == 1')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --label upstream-sync --body "$body"
+          fi

@@ -22,8 +22,8 @@ object IslandPriority {
     const val TIMER_OVERRIDE = 5
     const val CALENDAR_OVERRIDE = 6
 
+    const val PROGRESS = 8
     const val NOTIFICATION = 10
-        const val PROGRESS = 15
     const val FLASHLIGHT = 20
     const val NAVIGATION = 22
     const val TIMER = 25
@@ -78,6 +78,8 @@ interface IslandExpandedScope {
 
     // Call while the user is doing something
     fun keepAlive()
+
+    fun holdOpen(held: Boolean) {}
 }
 
 class ExpandedContent(val content: @Composable (IslandExpandedScope) -> Unit)
@@ -98,6 +100,8 @@ class StackIcon(
     val current: Boolean = false,
     val onSelect: (() -> Unit)? = null,
     val highlight: Boolean = false,
+    val fill: Boolean = false,
+    val widthFactor: Float = 1f,
     val content: @Composable (size: Dp) -> Unit,
 )
 
@@ -112,10 +116,12 @@ class SideBubble(
     val overflow: QueueOverflow = QueueOverflow.Number,
     // Compact cells' worth of room the bubble takes beside the camera
     val cells: Int = 1,
+    val soloIcons: List<StackIcon>? = null,
 )
 
 object SideBubblePriority {
     const val NOTIFICATION = 0
+    const val MEDIA = 5
     const val PROGRESS = 10
 }
 
@@ -129,6 +135,8 @@ class QueueInfo(
     val next: IslandItem,
     val onAdvance: () -> Unit,
 )
+
+enum class ExpandedSurfaceStyle { Default, Layered }
 
 class IslandItem(
     val key: String,
@@ -158,12 +166,16 @@ class IslandItem(
     val companionOnly: Boolean = false,
     val bypassLauncherOnly: Boolean = false,
     val hideExpandedQueue: Boolean = false,
-    
+    val expandedQueueOnly: Boolean = false,
+    val queueAccent: Color? = null,
+
     val stack: List<StackIcon> = emptyList(),
     val queued: List<StackIcon>? = null,
     val priorityGroup: String? = null,
     // Rendered inside a colored chip when Island chips is enabled.
     val chip: Boolean = key in IslandChips.items,
+    val expandedSurfaceStyle: ExpandedSurfaceStyle = ExpandedSurfaceStyle.Layered,
+    val expandedParticles: Boolean = false,
 ) {
     var userPriority: Int? = null
 
@@ -191,10 +203,14 @@ class IslandItem(
         companionOnly = companionOnly,
         bypassLauncherOnly = bypassLauncherOnly,
         hideExpandedQueue = hideExpandedQueue,
+        expandedQueueOnly = expandedQueueOnly,
+        queueAccent = queueAccent,
         stack = stack,
         queued = queued,
         priorityGroup = priorityGroup,
         chip = chip,
+        expandedSurfaceStyle = expandedSurfaceStyle,
+        expandedParticles = expandedParticles,
     ).also { it.userPriority = userPriority }
 
     val effectivePriority: Int get() = priorityOverride ?: userPriority ?: priority
